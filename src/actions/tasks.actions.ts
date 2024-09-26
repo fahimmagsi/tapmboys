@@ -23,11 +23,11 @@ export type CompletedTasksType = {
 
 export async function tasksList(): Promise<TasksList[]> {
   try {
-    connectMongoDB();
+    await connectMongoDB();
 
     const tasks = await Tasks.find();
 
-    return tasks as TasksList[]; // Ensure tasks are typed correctly
+    return tasks as TasksList[];
   } catch (error) {
     console.log({ error });
     return [];
@@ -48,9 +48,9 @@ export async function completeTask({
   | "taskAlreadyCompleted"
 > {
   try {
-    connectMongoDB();
+    await connectMongoDB();
 
-    // Fetch the task using findOne instead of find to get a single document
+    // Use findOne to fetch a single task
     const task = await Tasks.findOne({ where: { id: taskId } });
     if (!task) return "invalidTask";
 
@@ -62,11 +62,16 @@ export async function completeTask({
     const taskCompletion = await TasksCompletion.findOne({ where: { taskId, userId } });
     if (taskCompletion) return "taskAlreadyCompleted";
 
-    await TasksCompletion.create({
-      reward: task.points, // Now task is correctly typed and has points
-      taskId,
-      userId,
-    });
+    // Ensure task is not an array and access points directly
+    if (typeof task === 'object' && task !== null) {
+      await TasksCompletion.create({
+        reward: task.points, // Now task is correctly typed and has points
+        taskId,
+        userId,
+      });
+    } else {
+      return "invalidTask"; // Handle case where task is not an object
+    }
 
     return "success";
   } catch (e) {
@@ -83,7 +88,7 @@ export async function checkCompletedTasks({
   userId: string;
 }): Promise<boolean> {
   try {
-    connectMongoDB();
+    await connectMongoDB();
 
     const completion = await TasksCompletion.findOne({
       where: { userId, taskId },
