@@ -13,6 +13,7 @@ export type TasksList = {
   points: number;
   icon: string;
 };
+
 export type CompletedTasksType = {
   id?: string;
   taskId: string;
@@ -20,15 +21,13 @@ export type CompletedTasksType = {
   reward: number;
 };
 
-export async function tasksList(): Promise<(typeof Tasks)[] | []> {
+export async function tasksList(): Promise<TasksList[]> {
   try {
     connectMongoDB();
 
     const tasks = await Tasks.find();
 
-    // console.log(tasks);
-
-    return tasks;
+    return tasks as TasksList[]; // Ensure tasks are typed correctly
   } catch (error) {
     console.log({ error });
     return [];
@@ -51,19 +50,20 @@ export async function completeTask({
   try {
     connectMongoDB();
 
-    const task = await Tasks.find({ where: { id: taskId } });
+    // Fetch the task using findOne instead of find to get a single document
+    const task = await Tasks.findOne({ where: { id: taskId } });
     if (!task) return "invalidTask";
 
-    const user = await User.find({ where: { chatId: userId } });
+    const user = await User.findOne({ where: { chatId: userId } });
     console.log(user);
 
     if (!user) return "userNotExist";
 
-    const taskCompletion = await Tasks.find({ where: { taskId, userId } });
+    const taskCompletion = await TasksCompletion.findOne({ where: { taskId, userId } });
     if (taskCompletion) return "taskAlreadyCompleted";
 
     await TasksCompletion.create({
-      reward: task.points,
+      reward: task.points, // Now task is correctly typed and has points
       taskId,
       userId,
     });
@@ -85,7 +85,7 @@ export async function checkCompletedTasks({
   try {
     connectMongoDB();
 
-    const completion = await TasksCompletion.find({
+    const completion = await TasksCompletion.findOne({
       where: { userId, taskId },
     });
 
